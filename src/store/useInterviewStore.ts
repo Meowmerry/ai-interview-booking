@@ -25,6 +25,12 @@ interface InterviewState {
   difficulty: DifficultyLevel;
   duration: InterviewDuration;
 
+  // Media control states
+  cameraOn: boolean;
+  micOn: boolean;
+  isScreenSharing: boolean;
+  isRecording: boolean;
+
   // Actions
   setCurrentStep: (step: InterviewStep) => void;
   addMessage: (message: Message) => void;
@@ -39,6 +45,10 @@ interface InterviewState {
   toggleInterviewType: (type: InterviewType) => void;
   setDifficulty: (difficulty: DifficultyLevel) => void;
   setDuration: (duration: InterviewDuration) => void;
+  setCameraOn: (on: boolean) => void;
+  setMicOn: (on: boolean) => void;
+  setIsScreenSharing: (sharing: boolean) => void;
+  setIsRecording: (recording: boolean) => void;
   resetInterview: () => void;
 }
 
@@ -54,6 +64,10 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   interviewTypes: [],
   difficulty: "intermediate",
   duration: 30,
+  cameraOn: false,
+  micOn: false,
+  isScreenSharing: false,
+  isRecording: false,
 
   setCurrentStep: (step) => set({ currentStep: step }),
 
@@ -89,6 +103,14 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
   setDuration: (duration) => set({ duration }),
 
+  setCameraOn: (on) => set({ cameraOn: on }),
+
+  setMicOn: (on) => set({ micOn: on }),
+
+  setIsScreenSharing: (sharing) => set({ isScreenSharing: sharing }),
+
+  setIsRecording: (recording) => set({ isRecording: recording }),
+
   resetInterview: () =>
     set({
       currentStep: "setup",
@@ -101,5 +123,9 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       interviewTypes: [],
       difficulty: "intermediate",
       duration: 30,
+      cameraOn: false,
+      micOn: false,
+      isScreenSharing: false,
+      isRecording: false,
     }),
 }));
