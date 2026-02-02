@@ -1,8 +1,10 @@
 "use client";
 
+import { useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useInterviewStore } from "@/store/useInterviewStore";
 import { Briefcase, MessageSquare, CheckCircle } from "lucide-react";
+import SetupForm from "@/components/SetupForm";
 
 // Dynamic imports for components with Three.js to avoid SSR issues
 const InterviewerScene = dynamic(
@@ -22,13 +24,16 @@ const InterviewPage = dynamic(() => import("@/components/InterviewPage"), {
 export default function Home() {
   const {
     currentStep,
-    jobDescription,
     messages,
-    setJobDescription,
     setCurrentStep,
     clearMessages,
     resetInterview,
   } = useInterviewStore();
+
+  const handleStartInterview = useCallback(() => {
+    clearMessages();
+    setCurrentStep("interviewing");
+  }, [clearMessages, setCurrentStep]);
 
   const steps = [
     { id: "setup", label: "Setup", icon: Briefcase },
@@ -63,32 +68,7 @@ export default function Home() {
       <div className="max-w-4xl mx-auto">
         {/* Setup Step */}
         {currentStep === "setup" && (
-          <div className="bg-card rounded-xl p-8 border border-border shadow-lg">
-            <h2 className="text-2xl font-bold mb-4">Interview Setup</h2>
-            <p className="text-muted-foreground mb-6">
-              Enter the job description to customize your mock interview
-              experience.
-            </p>
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the job description here...
-
-Example:
-We are looking for a Senior Frontend Developer with 5+ years of experience in React, TypeScript, and modern web technologies. The ideal candidate should have experience with state management, testing, and building scalable applications..."
-              className="w-full h-56 bg-secondary border border-border rounded-lg p-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-            />
-            <button
-              onClick={() => {
-                clearMessages();
-                setCurrentStep("interviewing");
-              }}
-              disabled={!jobDescription.trim()}
-              className="mt-6 w-full bg-primary hover:bg-primary/90 disabled:bg-primary/50 disabled:cursor-not-allowed text-primary-foreground font-medium py-3 px-6 rounded-lg transition-colors"
-            >
-              Start Interview
-            </button>
-          </div>
+          <SetupForm onStartInterview={handleStartInterview} />
         )}
 
         {/* Interview Step - Full InterviewPage Component */}

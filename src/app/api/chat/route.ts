@@ -8,25 +8,176 @@ interface Message {
 
 interface ChatRequest {
   messages: Message[];
-  jobDescription: string;
+  jobDescription?: string;
+  interviewTypes?: string[];
+  difficulty?: string;
+  duration?: number;
 }
 
 type Provider = "openai" | "anthropic" | "huggingface" | "ollama" | null;
 
 // System prompt generator
-function getSystemPrompt(jobDescription: string) {
-  return `You are an expert technical interviewer. Based on the provided job description, conduct a realistic interview. Ask one question at a time. After the user answers, provide a very brief transition and ask the next follow-up question. Keep the tone professional but encouraging.
+function getSystemPrompt(
+  jobDescription?: string,
+  interviewTypes?: string[],
+  difficulty?: string,
+  duration?: number
+) {
+  const difficultyDescriptions: Record<string, string> = {
+    beginner: "entry-level, focusing on fundamentals and basic concepts",
+    intermediate: "mid-level, covering practical experience and problem-solving",
+    advanced: "senior-level, including system design, architecture, and complex scenarios",
+  };
 
-Job Description:
-${jobDescription}
+  const typeDescriptions: Record<string, string> = {
+    coding: "live coding challenges and algorithm questions",
+    "multiple-choice": "quiz-style knowledge checks",
+    behavioral: "situational and behavioral questions (STAR method)",
+    technical: "deep technical concepts and system knowledge",
+    hr: "culture fit, soft skills, and career goals",
+    "hiring-manager": "leadership, vision, and strategic thinking",
+  };
 
-Guidelines:
+  const selectedTypes = interviewTypes?.map((t) => typeDescriptions[t] || t).join(", ") || "general technical questions";
+  const difficultyLevel = difficultyDescriptions[difficulty || "intermediate"] || "mid-level difficulty";
+  const sessionLength = duration ? `${duration} minute` : "30 minute";
+
+  let contextSection = "";
+  if (jobDescription?.trim()) {
+    contextSection = `\nJob Description:\n${jobDescription}\n`;
+  }
+
+  // Build difficulty-specific instructions
+  let difficultyInstructions = "";
+  switch (difficulty) {
+    case "beginner":
+      difficultyInstructions = `
+Beginner-Level Guidelines:
+- Start with fundamental concepts and basic questions
+- Provide helpful hints if the candidate struggles (e.g., "Think about..." or "Consider...")
+- Break down complex topics into simpler parts
+- Offer encouragement and guide them toward the answer
+- Focus on understanding rather than speed
+- If they're stuck, provide a small clue before moving on`;
+      break;
+    case "advanced":
+      difficultyInstructions = `
+Advanced-Level Guidelines:
+- Include system design questions and architectural discussions
+- Ask about edge cases, scalability, and trade-offs
+- Probe deeper with follow-up questions on their answers
+- Expect detailed explanations of time/space complexity
+- Discuss real-world constraints and production considerations
+- Challenge assumptions and explore alternative approaches
+- Ask about failure modes and error handling strategies`;
+      break;
+    default: // intermediate
+      difficultyInstructions = `
+Intermediate-Level Guidelines:
+- Balance theoretical knowledge with practical application
+- Ask about real-world experience and problem-solving approaches
+- Expect reasonable explanations but don't require exhaustive detail
+- Include some follow-up questions to test depth of knowledge`;
+      break;
+  }
+
+  // Build type-specific instructions
+  let typeInstructions = "";
+  const types = interviewTypes || [];
+
+  if (types.includes("coding")) {
+    typeInstructions += `
+Coding Interview Instructions:
+- Present clear coding problems with specific requirements
+- Ask the candidate to explain their approach before coding
+- Evaluate code for: correctness, efficiency, readability, and edge case handling
+- Ask about time and space complexity
+- If syntax errors are present, point them out and ask for corrections
+- For ${difficulty === "beginner" ? "beginner level: use simple problems like array manipulation, string operations, or basic data structures" : difficulty === "advanced" ? "advanced level: include dynamic programming, graph algorithms, or system design coding" : "intermediate level: include medium complexity problems with multiple approaches"}
+`;
+  }
+
+  if (types.includes("behavioral")) {
+    typeInstructions += `
+Behavioral Interview Instructions:
+- Use the STAR method (Situation, Task, Action, Result)
+- Ask about past experiences, challenges, and how they handled them
+- Probe for specific examples, not hypotheticals
+- Listen for teamwork, leadership, and problem-solving skills
+`;
+  }
+
+  if (types.includes("technical")) {
+    typeInstructions += `
+Technical Interview Instructions:
+- Test deep understanding of technical concepts
+- Ask about architecture decisions and trade-offs
+- Discuss technologies, frameworks, and best practices
+- ${difficulty === "advanced" ? "Include system design scenarios and scalability discussions" : "Focus on core concepts and practical application"}
+`;
+  }
+
+  if (types.includes("multiple-choice")) {
+    typeInstructions += `
+Multiple-Choice Instructions:
+- Present quiz-style questions with clear options (A, B, C, D)
+- After the candidate answers, explain why the answer is correct or incorrect
+- Cover a range of topics within the interview focus
+`;
+  }
+
+  if (types.includes("hr")) {
+    typeInstructions += `
+HR Interview Instructions:
+- Assess culture fit and soft skills
+- Ask about career goals, motivation, and values
+- Discuss work style, collaboration preferences, and expectations
+`;
+  }
+
+  if (types.includes("hiring-manager")) {
+    typeInstructions += `
+Hiring Manager Interview Instructions:
+- Assess leadership potential and strategic thinking
+- Ask about vision, decision-making, and team management
+- Discuss how they would approach challenges in the role
+`;
+  }
+
+  // Build hybrid interview acknowledgment
+  let hybridInstructions = "";
+  if (types.length > 1) {
+    const typeLabels: Record<string, string> = {
+      coding: "coding exercise",
+      behavioral: "behavioral questions",
+      technical: "technical discussion",
+      "multiple-choice": "knowledge quiz",
+      hr: "HR/culture fit discussion",
+      "hiring-manager": "leadership assessment",
+    };
+    const orderedTypes = types.map(t => typeLabels[t] || t);
+    hybridInstructions = `
+Hybrid Interview Structure:
+This is a hybrid interview combining multiple formats. At the start, briefly explain the structure to the candidate:
+"This interview will cover: ${orderedTypes.join(", then ")}."
+Transition smoothly between sections with brief announcements like "Now let's move on to the ${orderedTypes[1] || "next section"}."
+`;
+  }
+
+  return `You are an expert interviewer conducting a ${sessionLength} mock interview session. The difficulty level is ${difficultyLevel}.
+
+Interview focus areas: ${selectedTypes}
+${contextSection}
+Core Guidelines:
 - Start with a warm greeting if this is the beginning of the interview
-- Ask relevant technical and behavioral questions based on the job requirements
+- Ask one question at a time, appropriate for the difficulty level
 - After each answer, acknowledge briefly (1-2 sentences max) and move to the next question
 - Keep questions focused and clear
 - Adapt your questions based on the candidate's responses
-- Mix technical questions with situational/behavioral questions as appropriate for the role`;
+- Be encouraging but realistic in your assessment
+${difficultyInstructions}
+${typeInstructions}
+${hybridInstructions}`;
 }
 
 // Detect which provider has API key
@@ -208,14 +359,10 @@ async function callHuggingFace(messages: Message[], systemPrompt: string): Promi
 export async function POST(request: NextRequest) {
   try {
     const body: ChatRequest = await request.json();
-    const { messages, jobDescription } = body;
+    const { messages, jobDescription, interviewTypes, difficulty, duration } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: "messages array is required" }, { status: 400 });
-    }
-
-    if (!jobDescription || typeof jobDescription !== "string") {
-      return NextResponse.json({ error: "jobDescription string is required" }, { status: 400 });
     }
 
     const provider = detectProvider();
@@ -229,7 +376,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const systemPrompt = getSystemPrompt(jobDescription);
+    const systemPrompt = getSystemPrompt(jobDescription, interviewTypes, difficulty, duration);
 
     switch (provider) {
       case "openai":

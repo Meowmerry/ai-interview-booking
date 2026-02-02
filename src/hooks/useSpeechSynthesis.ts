@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+export type VoiceGender = "female" | "male";
+
 interface UseSpeechSynthesisOptions {
   onStart?: () => void;
   onEnd?: () => void;
@@ -10,6 +12,68 @@ interface UseSpeechSynthesisOptions {
   pitch?: number;
   volume?: number;
   voiceName?: string;
+  preferredGender?: VoiceGender;
+}
+
+// Helper function to find a natural-sounding voice based on gender preference
+export function findVoiceByGender(
+  voices: SpeechSynthesisVoice[],
+  gender: VoiceGender
+): SpeechSynthesisVoice | null {
+  if (voices.length === 0) return null;
+
+  // Known high-quality voices categorized by gender
+  const femaleVoices = [
+    "Google UK English Female",
+    "Google US English Female",
+    "Microsoft Zira",
+    "Samantha",
+    "Karen",
+    "Moira",
+    "Tessa",
+    "Fiona",
+    "Victoria",
+    "Allison",
+  ];
+
+  const maleVoices = [
+    "Google UK English Male",
+    "Google US English Male",
+    "Microsoft David",
+    "Alex",
+    "Daniel",
+    "Tom",
+    "Oliver",
+    "Aaron",
+    "Fred",
+  ];
+
+  const preferredList = gender === "female" ? femaleVoices : maleVoices;
+
+  // Try to find a preferred voice
+  for (const preferred of preferredList) {
+    const found = voices.find((v) => v.name.includes(preferred));
+    if (found) return found;
+  }
+
+  // Fallback: search by common gender indicators in voice names
+  const genderKeywords =
+    gender === "female"
+      ? ["female", "woman", "girl", "zira", "samantha", "karen", "fiona"]
+      : ["male", "man", "david", "daniel", "alex", "tom", "oliver"];
+
+  const fallbackVoice = voices.find((v) => {
+    const nameLower = v.name.toLowerCase();
+    return (
+      v.lang.startsWith("en") &&
+      genderKeywords.some((keyword) => nameLower.includes(keyword))
+    );
+  });
+
+  if (fallbackVoice) return fallbackVoice;
+
+  // Last resort: return first English voice
+  return voices.find((v) => v.lang.startsWith("en")) || voices[0] || null;
 }
 
 export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
@@ -21,6 +85,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     pitch = 1,
     volume = 1,
     voiceName,
+    preferredGender = "female",
   } = options;
 
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -50,42 +115,19 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     }
   }, []);
 
-  // Get the best voice for the interviewer
+  // Get the best voice for the interviewer based on gender preference
   const getVoice = useCallback((): SpeechSynthesisVoice | null => {
     if (voices.length === 0) return null;
 
-    // If a specific voice name is requested
+    // If a specific voice name is requested, use that
     if (voiceName) {
       const found = voices.find((v) => v.name.includes(voiceName));
       if (found) return found;
     }
 
-    // Prefer high-quality English voices
-    const preferredVoices = [
-      "Google UK English Male",
-      "Google UK English Female",
-      "Google US English",
-      "Microsoft David",
-      "Microsoft Zira",
-      "Alex",
-      "Daniel",
-      "Samantha",
-    ];
-
-    for (const preferred of preferredVoices) {
-      const found = voices.find((v) => v.name.includes(preferred));
-      if (found) return found;
-    }
-
-    // Fallback to any English voice
-    const englishVoice = voices.find(
-      (v) => v.lang.startsWith("en") && v.localService
-    );
-    if (englishVoice) return englishVoice;
-
-    // Last resort: first available voice
-    return voices[0] || null;
-  }, [voices, voiceName]);
+    // Use the gender-based voice finder
+    return findVoiceByGender(voices, preferredGender);
+  }, [voices, voiceName, preferredGender]);
 
   const speak = useCallback(
     (text: string) => {

@@ -7,7 +7,9 @@ interface Message {
 
 interface ScorecardRequest {
   messages: Message[];
-  jobDescription: string;
+  jobDescription?: string;
+  interviewTypes?: string[];
+  difficulty?: string;
 }
 
 export interface ScorecardResponse {
@@ -39,7 +41,9 @@ function detectProvider(): Provider {
 
 function getScorecardPrompt(
   messages: Message[],
-  jobDescription: string
+  jobDescription?: string,
+  interviewTypes?: string[],
+  difficulty?: string
 ): string {
   const conversation = messages
     .map((msg) => {
@@ -48,10 +52,27 @@ function getScorecardPrompt(
     })
     .join("\n\n");
 
+  const typeDescriptions: Record<string, string> = {
+    coding: "coding challenges",
+    "multiple-choice": "quiz-style questions",
+    behavioral: "behavioral questions",
+    technical: "technical concepts",
+    hr: "HR/culture fit",
+    "hiring-manager": "leadership/vision",
+  };
+
+  const selectedTypes = interviewTypes?.map((t) => typeDescriptions[t] || t).join(", ") || "general interview";
+  const difficultyLevel = difficulty || "intermediate";
+
+  let contextSection = "";
+  if (jobDescription?.trim()) {
+    contextSection = `Job Description:\n${jobDescription}\n\n`;
+  }
+
   return `You are an expert interview coach and assessor. Analyze the following mock interview conversation and provide a detailed performance scorecard.
 
-Job Description:
-${jobDescription}
+${contextSection}Interview Type: ${selectedTypes}
+Difficulty Level: ${difficultyLevel}
 
 Interview Conversation:
 ${conversation}
@@ -260,19 +281,12 @@ function parseScorecard(content: string): ScorecardResponse {
 export async function POST(request: NextRequest) {
   try {
     const body: ScorecardRequest = await request.json();
-    const { messages, jobDescription } = body;
+    const { messages, jobDescription, interviewTypes, difficulty } = body;
 
     // Validate request
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json(
         { error: "Invalid request: messages array is required and must not be empty" },
-        { status: 400 }
-      );
-    }
-
-    if (!jobDescription || typeof jobDescription !== "string") {
-      return NextResponse.json(
-        { error: "Invalid request: jobDescription string is required" },
         { status: 400 }
       );
     }
@@ -289,7 +303,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = getScorecardPrompt(messages, jobDescription);
+    const prompt = getScorecardPrompt(messages, jobDescription, interviewTypes, difficulty);
     let scorecard: ScorecardResponse;
 
     switch (provider) {

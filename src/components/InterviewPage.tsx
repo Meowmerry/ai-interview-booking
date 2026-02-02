@@ -16,7 +16,10 @@ import {
   CheckCircle,
   Volume2,
   VolumeX,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
+
 
 // Dynamic import for Three.js component to avoid SSR issues
 const InterviewerScene = dynamic(() => import("./InterviewerScene"), {
@@ -28,6 +31,7 @@ const InterviewerScene = dynamic(() => import("./InterviewerScene"), {
   ),
 });
 
+
 export default function InterviewPage() {
   const {
     isSpeaking,
@@ -35,6 +39,8 @@ export default function InterviewPage() {
     setCurrentStep,
     clearMessages,
     jobDescription,
+    interviewTypes,
+    difficulty,
     scorecard,
     isScorecardLoading,
     scorecardError,
@@ -42,6 +48,8 @@ export default function InterviewPage() {
     setScorecardLoading,
     setScorecardError,
     resetInterview,
+    preferredVoice,
+    setPreferredVoice,
   } = useInterviewStore();
 
   const { messages, isLoading, error, sendMessage, startInterview } = useChat({
@@ -50,6 +58,7 @@ export default function InterviewPage() {
 
   const [showScorecardModal, setShowScorecardModal] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const hasStartedRef = useRef(false);
   const lastSpokenIndexRef = useRef(-1);
@@ -64,6 +73,7 @@ export default function InterviewPage() {
   } = useSpeechSynthesis({
     rate: 1.0,
     pitch: 1.0,
+    preferredGender: preferredVoice,
     onStart: () => setIsSpeaking(true),
     onEnd: () => setIsSpeaking(false),
     onError: () => setIsSpeaking(false),
@@ -166,6 +176,8 @@ export default function InterviewPage() {
         body: JSON.stringify({
           messages,
           jobDescription,
+          interviewTypes,
+          difficulty,
         }),
       });
 
@@ -186,6 +198,8 @@ export default function InterviewPage() {
   }, [
     messages,
     jobDescription,
+    interviewTypes,
+    difficulty,
     setScorecard,
     setScorecardLoading,
     setScorecardError,
@@ -246,15 +260,68 @@ export default function InterviewPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Settings Dropdown */}
+            {isTTSSupported && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSettings(!showSettings)}
+                  className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary rounded-lg transition-colors flex items-center gap-1"
+                  title="Voice settings"
+                >
+                  <Settings className="w-4 h-4" />
+                  <ChevronDown className={`w-3 h-3 transition-transform ${showSettings ? "rotate-180" : ""}`} />
+                </button>
+                {showSettings && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setShowSettings(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-border rounded-lg shadow-lg z-20 py-1">
+                      <div className="px-3 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+                        AI Voice
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPreferredVoice("female");
+                          setShowSettings(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-secondary transition-colors flex items-center justify-between ${
+                          preferredVoice === "female" ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        Female Voice
+                        {preferredVoice === "female" && (
+                          <CheckCircle className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          setPreferredVoice("male");
+                          setShowSettings(false);
+                        }}
+                        className={`w-full px-3 py-2 text-sm text-left hover:bg-secondary transition-colors flex items-center justify-between ${
+                          preferredVoice === "male" ? "text-primary" : "text-foreground"
+                        }`}
+                      >
+                        Male Voice
+                        {preferredVoice === "male" && (
+                          <CheckCircle className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             {/* Mute/Unmute TTS Button */}
             {isTTSSupported && (
               <button
                 onClick={toggleMute}
-                className={`p-2 rounded-lg transition-colors ${
-                  isMuted
+                className={`p-2 rounded-lg transition-colors ${isMuted
                     ? "text-red-400 hover:bg-red-500/10"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-                }`}
+                  }`}
                 title={isMuted ? "Unmute AI voice" : "Mute AI voice"}
               >
                 {isMuted ? (
@@ -295,7 +362,27 @@ export default function InterviewPage() {
 
         {/* 3D Interviewer Scene */}
         <div className="h-[280px] sm:h-[320px] shrink-0 border-b border-border relative">
-          <InterviewerScene isSpeaking={isSpeaking} />
+             <InterviewerScene isSpeaking={isSpeaking} />
+          {/* <Canvas camera={{ position: [0, 1.5, 5], fov: 45 }}>
+            <ambientLight intensity={0.5} />
+            <directionalLight position={[5, 10, 7.5]} intensity={1.2} />
+
+            <Suspense fallback={null}>
+              <AnimatedHuman isSpeaking={isSpeaking} />
+              <Text
+                position={[0, -1.95, 0]} 
+                fontSize={0.25} 
+                color="#fff"
+                anchorX="center"
+                anchorY="middle"
+                fontStyle="normal"
+                fontWeight={600}
+              >
+                AI Interviewer
+              </Text>
+            </Suspense>
+          </Canvas> */}
+
           {/* Speaking indicator overlay */}
           {isSpeaking && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 bg-primary/90 rounded-full">

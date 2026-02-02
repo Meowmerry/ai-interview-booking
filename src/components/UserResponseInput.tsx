@@ -181,11 +181,15 @@ export default function UserResponseInput({
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error("Speech recognition error:", event.error);
-      setRecordingStatus(`Error: ${event.error}`);
+      // "aborted" is expected when we intentionally stop recording
+      // "no-speech" happens when user hasn't spoken yet - keep listening
+      if (event.error === "aborted") {
+        return; // Ignore - this is intentional
+      }
 
-      // Don't stop on 'no-speech' error, just keep listening
       if (event.error !== "no-speech") {
+        console.error("Speech recognition error:", event.error);
+        setRecordingStatus(`Error: ${event.error}`);
         stopRecording(false);
       }
     };

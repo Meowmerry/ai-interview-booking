@@ -12,6 +12,9 @@ export function useChat(options: UseChatOptions = {}) {
   const {
     messages,
     jobDescription,
+    interviewTypes,
+    difficulty,
+    duration,
     addMessage,
     setIsSpeaking,
   } = useInterviewStore();
@@ -39,6 +42,9 @@ export function useChat(options: UseChatOptions = {}) {
           body: JSON.stringify({
             messages: apiMessages,
             jobDescription,
+            interviewTypes,
+            difficulty,
+            duration,
           }),
         });
 
@@ -107,7 +113,7 @@ export function useChat(options: UseChatOptions = {}) {
         setIsLoading(false);
       }
     },
-    [messages, jobDescription, addMessage, setIsSpeaking, isLoading, options]
+    [messages, jobDescription, interviewTypes, difficulty, duration, addMessage, setIsSpeaking, isLoading, options]
   );
 
   const startInterview = useCallback(async () => {

@@ -2,6 +2,10 @@ import { create } from "zustand";
 import type { ScorecardResponse } from "@/app/api/scorecard/route";
 
 export type InterviewStep = "setup" | "interviewing" | "feedback";
+export type VoicePreference = "female" | "male";
+export type InterviewType = "coding" | "multiple-choice" | "behavioral" | "technical" | "hr" | "hiring-manager";
+export type DifficultyLevel = "beginner" | "intermediate" | "advanced";
+export type InterviewDuration = 15 | 30 | 60;
 
 export interface Message {
   role: "user" | "assistant" | "system";
@@ -16,6 +20,10 @@ interface InterviewState {
   scorecard: ScorecardResponse | null;
   isScorecardLoading: boolean;
   scorecardError: string | null;
+  preferredVoice: VoicePreference;
+  interviewTypes: InterviewType[];
+  difficulty: DifficultyLevel;
+  duration: InterviewDuration;
 
   // Actions
   setCurrentStep: (step: InterviewStep) => void;
@@ -26,6 +34,11 @@ interface InterviewState {
   setScorecard: (scorecard: ScorecardResponse | null) => void;
   setScorecardLoading: (loading: boolean) => void;
   setScorecardError: (error: string | null) => void;
+  setPreferredVoice: (voice: VoicePreference) => void;
+  setInterviewTypes: (types: InterviewType[]) => void;
+  toggleInterviewType: (type: InterviewType) => void;
+  setDifficulty: (difficulty: DifficultyLevel) => void;
+  setDuration: (duration: InterviewDuration) => void;
   resetInterview: () => void;
 }
 
@@ -37,6 +50,10 @@ export const useInterviewStore = create<InterviewState>((set) => ({
   scorecard: null,
   isScorecardLoading: false,
   scorecardError: null,
+  preferredVoice: "female",
+  interviewTypes: [],
+  difficulty: "intermediate",
+  duration: 30,
 
   setCurrentStep: (step) => set({ currentStep: step }),
 
@@ -57,6 +74,21 @@ export const useInterviewStore = create<InterviewState>((set) => ({
 
   setScorecardError: (error) => set({ scorecardError: error }),
 
+  setPreferredVoice: (voice) => set({ preferredVoice: voice }),
+
+  setInterviewTypes: (types) => set({ interviewTypes: types }),
+
+  toggleInterviewType: (type) =>
+    set((state) => ({
+      interviewTypes: state.interviewTypes.includes(type)
+        ? state.interviewTypes.filter((t) => t !== type)
+        : [...state.interviewTypes, type],
+    })),
+
+  setDifficulty: (difficulty) => set({ difficulty }),
+
+  setDuration: (duration) => set({ duration }),
+
   resetInterview: () =>
     set({
       currentStep: "setup",
@@ -66,5 +98,8 @@ export const useInterviewStore = create<InterviewState>((set) => ({
       scorecard: null,
       isScorecardLoading: false,
       scorecardError: null,
+      interviewTypes: [],
+      difficulty: "intermediate",
+      duration: 30,
     }),
 }));
